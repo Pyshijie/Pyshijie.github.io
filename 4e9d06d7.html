@@ -1,0 +1,435 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>synchronized与锁升级 | Hackery的笔记屋</title><meta name="author" content="Hackery"><meta name="copyright" content="Hackery"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="Synchronized与锁升级 Synchronized的性能是不是一定弱于Lock   本章路线总纲 synchronized 锁优化的背景 用锁能够实现数据的安全性，但是会带来性能下降。 无锁能够基于线程并行提升程序性能，但是会带来安全性下降。 求平衡？？？  synchronized锁：由对象头中的Mark Word根据锁标志位的不同而被复用及锁升级策略  Synchronized的性能">
+<meta property="og:type" content="article">
+<meta property="og:title" content="synchronized与锁升级">
+<meta property="og:url" content="http://example.com/4e9d06d7.html">
+<meta property="og:site_name" content="Hackery的笔记屋">
+<meta property="og:description" content="Synchronized与锁升级 Synchronized的性能是不是一定弱于Lock   本章路线总纲 synchronized 锁优化的背景 用锁能够实现数据的安全性，但是会带来性能下降。 无锁能够基于线程并行提升程序性能，但是会带来安全性下降。 求平衡？？？  synchronized锁：由对象头中的Mark Word根据锁标志位的不同而被复用及锁升级策略  Synchronized的性能">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://i.loli.net/2020/05/01/gkihqEjXxJ5UZ1C.jpg">
+<meta property="article:published_time" content="2023-09-12T02:20:30.000Z">
+<meta property="article:modified_time" content="2023-09-12T02:31:20.705Z">
+<meta property="article:author" content="Hackery">
+<meta property="article:tag" content="synchronized">
+<meta property="article:tag" content="锁">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://i.loli.net/2020/05/01/gkihqEjXxJ5UZ1C.jpg"><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="http://example.com/4e9d06d7.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" media="print" onload="this.media='all'"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/node-snackbar/dist/snackbar.min.css" media="print" onload="this.media='all'"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox/fancybox.min.css" media="print" onload="this.media='all'"><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  noticeOutdate: undefined,
+  highlight: {"plugin":"highlighjs","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":300},
+  copy: {
+    success: '复制成功',
+    error: '复制错误',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: true
+  },
+  runtime: '天',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: {"limitCount":50,"languages":{"author":"作者: Hackery","link":"链接: ","source":"来源: Hackery的笔记屋","info":"著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。"}},
+  lightbox: 'fancybox',
+  Snackbar: {"chs_to_cht":"你已切换为繁体","cht_to_chs":"你已切换为简体","day_to_night":"你已切换为深色模式","night_to_day":"你已切换为浅色模式","bgLight":"#49b1f5","bgDark":"#1f1f1f","position":"bottom-left"},
+  source: {
+    justifiedGallery: {
+      js: 'https://cdn.jsdelivr.net/npm/flickr-justified-gallery/dist/fjGallery.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/flickr-justified-gallery/dist/fjGallery.min.css'
+    }
+  },
+  isPhotoFigcaption: false,
+  islazyload: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'synchronized与锁升级',
+  isPost: true,
+  isHome: false,
+  isHighlightShrink: false,
+  isToc: true,
+  postUpdate: '2023-09-12 10:31:20'
+}</script><noscript><style type="text/css">
+  #nav {
+    opacity: 1
+  }
+  .justified-gallery img {
+    opacity: 1
+  }
+
+  #recent-posts time,
+  #post-meta time {
+    display: inline !important
+  }
+</style></noscript><script>(win=>{
+    win.saveToLocal = {
+      set: function setWithExpiry(key, value, ttl) {
+        if (ttl === 0) return
+        const now = new Date()
+        const expiryDay = ttl * 86400000
+        const item = {
+          value: value,
+          expiry: now.getTime() + expiryDay,
+        }
+        localStorage.setItem(key, JSON.stringify(item))
+      },
+
+      get: function getWithExpiry(key) {
+        const itemStr = localStorage.getItem(key)
+
+        if (!itemStr) {
+          return undefined
+        }
+        const item = JSON.parse(itemStr)
+        const now = new Date()
+
+        if (now.getTime() > item.expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return item.value
+      }
+    }
+  
+    win.getScript = url => new Promise((resolve, reject) => {
+      const script = document.createElement('script')
+      script.src = url
+      script.async = true
+      script.onerror = reject
+      script.onload = script.onreadystatechange = function() {
+        const loadState = this.readyState
+        if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+        script.onload = script.onreadystatechange = null
+        resolve()
+      }
+      document.head.appendChild(script)
+    })
+  
+    win.getCSS = (url,id = false) => new Promise((resolve, reject) => {
+      const link = document.createElement('link')
+      link.rel = 'stylesheet'
+      link.href = url
+      if (id) link.id = id
+      link.onerror = reject
+      link.onload = link.onreadystatechange = function() {
+        const loadState = this.readyState
+        if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+        link.onload = link.onreadystatechange = null
+        resolve()
+      }
+      document.head.appendChild(link)
+    })
+  
+      win.activateDarkMode = function () {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      win.activateLightMode = function () {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+      const t = saveToLocal.get('theme')
+    
+          if (t === 'dark') activateDarkMode()
+          else if (t === 'light') activateLightMode()
+        
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        if (asideStatus === 'hide') {
+          document.documentElement.classList.add('hide-aside')
+        } else {
+          document.documentElement.classList.remove('hide-aside')
+        }
+      }
+    
+    const detectApple = () => {
+      if(/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)){
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+    })(window)</script><!-- hexo injector head_end start -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/hexo-math@4.0.0/dist/style.css">
+<!-- hexo injector head_end end --><meta name="generator" content="Hexo 6.3.0"></head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><script>(()=>{
+  const $loadingBox = document.getElementById('loading-box')
+  const $body = document.body
+  const preloader = {
+    endLoading: () => {
+      $body.style.overflow = ''
+      $loadingBox.classList.add('loaded')
+    },
+    initLoading: () => {
+      $body.style.overflow = 'hidden'
+      $loadingBox.classList.remove('loaded')
+    }
+  }
+
+  preloader.initLoading()
+  window.addEventListener('load',() => { preloader.endLoading() })
+
+  if (false) {
+    document.addEventListener('pjax:send', () => { preloader.initLoading() })
+    document.addEventListener('pjax:complete', () => { preloader.endLoading() })
+  }
+})()</script><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img is-center"><img src="/img/profile.webp" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="sidebar-site-data site-data is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">3</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">6</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">1</div></a></div><hr class="custom-hr"/><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 笔记屋</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div><div class="menus_item"><a class="site-page group" href="javascript:void(0);"><i class="fa-fw fas fa-list"></i><span> 清单</span><i class="fas fa-chevron-down"></i></a><ul class="menus_item_child"><li><a class="site-page child" href="/music/"><i class="fa-fw fas fa-music"></i><span> Music</span></a></li><li><a class="site-page child" href="/movies/"><i class="fa-fw fas fa-video"></i><span> Movie</span></a></li></ul></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url('https://i.loli.net/2020/05/01/gkihqEjXxJ5UZ1C.jpg')"><nav id="nav"><span id="blog-info"><a href="/" title="Hackery的笔记屋"><span class="site-name">Hackery的笔记屋</span></a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 笔记屋</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div><div class="menus_item"><a class="site-page group" href="javascript:void(0);"><i class="fa-fw fas fa-list"></i><span> 清单</span><i class="fas fa-chevron-down"></i></a><ul class="menus_item_child"><li><a class="site-page child" href="/music/"><i class="fa-fw fas fa-music"></i><span> Music</span></a></li><li><a class="site-page child" href="/movies/"><i class="fa-fw fas fa-video"></i><span> Movie</span></a></li></ul></div></div><div id="toggle-menu"><a class="site-page" href="javascript:void(0);"><i class="fas fa-bars fa-fw"></i></a></div></div></nav><div id="post-info"><h1 class="post-title">synchronized与锁升级</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2023-09-12T02:20:30.000Z" title="发表于 2023-09-12 10:20:30">2023-09-12</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2023-09-12T02:31:20.705Z" title="更新于 2023-09-12 10:31:20">2023-09-12</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B/">并发编程</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-wordcount"><i class="far fa-file-word fa-fw post-meta-icon"></i><span class="post-meta-label">字数总计:</span><span class="word-count">5.8k</span><span class="post-meta-separator">|</span><i class="far fa-clock fa-fw post-meta-icon"></i><span class="post-meta-label">阅读时长:</span><span>18分钟</span></span><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title="synchronized与锁升级"><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">阅读量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="post-content" id="article-container"><h3 id="synchronized与锁升级"><a class="markdownIt-Anchor" href="#synchronized与锁升级"></a> Synchronized与锁升级</h3>
+<p>Synchronized的性能是不是一定弱于Lock</p>
+<p><img src="../images/juc/image-20230515101753822.png" alt="image-20230515101753822"></p>
+<h3 id="本章路线总纲"><a class="markdownIt-Anchor" href="#本章路线总纲"></a> 本章路线总纲</h3>
+<p>synchronized 锁优化的背景<br>
+用锁能够实现数据的安全性，但是会带来性能下降。<br>
+无锁能够基于线程并行提升程序性能，但是会带来安全性下降。<br>
+求平衡？？？</p>
+<p><img src="../images/juc/image-20230515102142615.png" alt="image-20230515102142615"></p>
+<p>synchronized锁：由对象头中的Mark Word根据锁标志位的不同而被复用及锁升级策略</p>
+<h3 id="synchronized的性能变化"><a class="markdownIt-Anchor" href="#synchronized的性能变化"></a> Synchronized的性能变化</h3>
+<p>java5以前，只有Synchronized，这个是操作系统级别的重量级操作</p>
+<p>重量级锁，假如锁的竞争比较激烈的话，性能下降</p>
+<p><strong>Java5之前，用户态和内核态之间的切换</strong></p>
+<blockquote>
+<p><img src="../images/juc/image-20230515102240569.png" alt="image-20230515102240569"></p>
+<p>java的线程是映射到操作系统原生线程之上的，如果要阻塞或唤醒一个线程就需要操作系统介入，需要在用户态与核心态之间切换，这种切换会消耗大量的系统资源，因为用户态与内核态都有各自专用的内存空间，专用的寄存器等，用户态切换至内核态需要传递许多变量、参数给内核，内核也需要保护好用户态在切换时的一些寄存器值、变量等，以便内核态调用结束后切换回用户态继续工作。</p>
+<p>在Java早期版本中，synchronized属于重量级锁，效率低下，因为监视器锁（monitor）是依赖于底层的操作系统的Mutex Lock来实现的，挂起线程和恢复线程都需要转入内核态去完成，阻塞或唤醒一个Java线程需要操作系统切换CPU状态来完成，这种状态切换需要耗费处理器时间，如果同步代码块中内容过于简单，这种切换的时间可能比用户代码执行的时间还长”，时间成本相对较高，这也是为什么早期的synchronized效率低的原因<br>
+Java 6之后，为了减少获得锁和释放锁所带来的性能消耗，引入了轻量级锁和偏向锁</p>
+</blockquote>
+<h3 id="为什么每一个对象都可以成为一个锁"><a class="markdownIt-Anchor" href="#为什么每一个对象都可以成为一个锁"></a> <strong>为什么每一个对象都可以成为一个锁？？</strong></h3>
+<p><strong>markOop.hpp</strong></p>
+<blockquote>
+<p><img src="../images/juc/image-20230515102620165.png" alt="image-20230515102620165"></p>
+<p>Monitor可以理解为一种同步工具，也可理解为一种同步机制，常常被描述为一个Java对象。Java对象是天生的Monitor，每一个Java对象都有成为Monitor的潜质，因为在Java的设计中 ，每一个Java对象自打娘胎里出来就带了一把看不见的锁，它叫做内部锁或者Monitor锁。</p>
+<p><img src="../images/juc/image-20230515102751480.png" alt="image-20230515102751480"></p>
+<p>Monitor的本质是依赖于底层操作系统的Mutex Lock实现，操作系统实现线程之间的切换需要从用户态到内核态的转换，成本非常高。</p>
+</blockquote>
+<p><strong>Monitor(监视器锁)</strong></p>
+<blockquote>
+<p><img src="../images/juc/image-20230515102824675.png" alt="image-20230515102824675"></p>
+<p><strong>Mutex Lock</strong><br>
+Monitor是在jvm底层实现的，底层代码是c++。本质是依赖于底层操作系统的Mutex Lock实现，操作系统实现线程之间的切换需要从用户态到内核态的转换，状态转换需要耗费很多的处理器时间成本非常高。所以synchronized是Java语言中的一个重量级操作。</p>
+<p><strong>Monitor与java对象以及线程是如何关联 ？</strong><br>
+1.如果一个java对象被某个线程锁住，则该java对象的Mark Word字段中LockWord指向monitor的起始地址<br>
+2.Monitor的Owner字段会存放拥有相关联对象锁的线程id</p>
+<p>Mutex Lock 的切换需要从用户态转换到核心态中，因此状态转换需要耗费很多的处理器时间。</p>
+</blockquote>
+<p><strong>java6开始，优化Synchronized</strong></p>
+<p>Java 6之后，为了减少获得锁和释放锁所带来的性能消耗，引入了轻量级锁和偏向锁</p>
+<p>需要有个逐步升级的过程，别一开始就捅到重量级锁</p>
+<h3 id="synchronized锁种类及升级步骤"><a class="markdownIt-Anchor" href="#synchronized锁种类及升级步骤"></a> synchronized锁种类及升级步骤</h3>
+<p>多线程访问情况，3种</p>
+<ul>
+<li>只有一个线程来访问，有且唯一Only One</li>
+<li>有2个线程A、B来交替访问</li>
+<li>竞争激烈，多个线程来访问</li>
+</ul>
+<p><strong>升级流程</strong></p>
+<p>synchronized用的锁是存在Java对象头里的Mark Word中.锁升级功能主要依赖MarkWord中锁标志位和释放偏向锁标志位</p>
+<p><img src="../images/juc/image-20230515103156461.png" alt="image-20230515103156461"></p>
+<p>上图是<strong>对象头MarkWork 针对不同锁</strong>的情况下的一个64位图示。</p>
+<h4 id="无锁"><a class="markdownIt-Anchor" href="#无锁"></a> <strong>无锁</strong></h4>
+<p>Code演示：</p>
+<p>当我们不手动获取hash值的时候，结果如下：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">Object</span> <span class="variable">o</span>  <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Object</span>();</span><br><span class="line"></span><br><span class="line"><span class="comment">//System.out.println(&quot;10进制hash码：&quot;+o.hashCode());</span></span><br><span class="line"><span class="comment">//System.out.println(&quot;16进制hash码：&quot;+Integer.toHexString(o.hashCode()));</span></span><br><span class="line"><span class="comment">//System.out.println(&quot;2进制hash码：&quot;+Integer.toBinaryString(o.hashCode()));</span></span><br><span class="line"></span><br><span class="line"><span class="type">String</span> <span class="variable">s</span> <span class="operator">=</span> ClassLayout.parseInstance(o).toPrintable();</span><br><span class="line">System.out.println(s);</span><br></pre></td></tr></table></figure>
+<p><img src="../images/juc/image-20230515104752512.png" alt="image-20230515104752512"></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="type">Object</span> <span class="variable">o</span>  <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Object</span>();</span><br><span class="line"></span><br><span class="line">    System.out.println(<span class="string">&quot;10进制hash码：&quot;</span>+o.hashCode());</span><br><span class="line">    System.out.println(<span class="string">&quot;16进制hash码：&quot;</span>+Integer.toHexString(o.hashCode()));</span><br><span class="line">    System.out.println(<span class="string">&quot;2进制hash码：&quot;</span>+Integer.toBinaryString(o.hashCode()));</span><br><span class="line"></span><br><span class="line">    <span class="type">String</span> <span class="variable">s</span> <span class="operator">=</span> ClassLayout.parseInstance(o).toPrintable();</span><br><span class="line">    System.out.println(s);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><img src="../images/juc/image-20230515104639914.png" alt="image-20230515104639914"></p>
+<p><strong>程序不会有锁的竞争</strong></p>
+<p><img src="../images/juc/image-20230515104817979.png" alt="image-20230515104817979"></p>
+<p>上述的Markwork中记录的值读取的顺序，是从后往前读。一个8位的整体是从前往后读。比如我们的无锁状态下对应的是上图的解析：</p>
+<ul>
+<li>
+<p>前25位，unused，未使用，全为 0 00000000 00000000 00000000<img src="../images/juc/image-20230515105141691.png" alt="image-20230515105141691"></p>
+</li>
+<li>
+<p>31位为 hashcode值   对应下面的顺序是  0101111 00101100 10011011 00011001  正好31位，首位和末尾0都忽略了。</p>
+<p><img src="../images/juc/image-20230515105702703.png" alt="image-20230515105702703"></p>
+</li>
+<li>
+<p>1位 unused  0</p>
+</li>
+<li>
+<p>4位 分代年龄  0000</p>
+</li>
+<li>
+<p>1位 是否是偏向锁，此时为无锁，不是偏向锁 为 0</p>
+</li>
+<li>
+<p>2位 锁标志位 无锁，01</p>
+</li>
+</ul>
+<p><img src="../images/juc/image-20230515105801857.png" alt="image-20230515105801857"></p>
+<h4 id="偏向锁"><a class="markdownIt-Anchor" href="#偏向锁"></a> 偏向锁</h4>
+<p><strong>主要作用</strong></p>
+<p>当一段同步代码一直被同一个线程多次访问，由于只有一个线程那么该线程在后续访问时便会自动获得锁</p>
+<p>同一个老顾客来访，直接老规矩行方便</p>
+<p>看看多线程卖票，大多数情况下都是同一个线程获取到的票，然后售卖。</p>
+<blockquote>
+<p>Hotspot 的作者经过研究发现，大多数情况下：</p>
+<p>多线程的情况下，锁不仅不存在多线程竞争，还存在锁由同一线程多次获得的情况，</p>
+<p>偏向锁就是在这种情况下出现的，它的出现是为了解决只有在一个线程执行同步时提高性能。</p>
+<p>如果还是使用我们的synchronized重量级锁，从用户态转移到内核态，耗费资源大，并且通常情况下，我们的某一个锁总是会被同一个线程来获得，比如我们的卖票案例，票总是会被同一个窗口卖出，当出现这种情景的时候。如果我们还是采用synchronized 实现用户态和内核态的转换，没有必要，此时就出现了偏向锁。偏向锁，顾名思义，偏向某一个线程，当某一个线程进来的时候，偏向它就直接放行。无需加锁或者释放锁了，甚至CAS操作都省了。达到了性能的极大的提升。</p>
+</blockquote>
+<p><img src="../images/juc/image-20230515110201128.png" alt="image-20230515110201128"></p>
+<p><strong>偏向锁的持有</strong></p>
+<blockquote>
+<p>理论落地：<br>
+在实际应用运行过程中发现，“锁总是同一个线程持有，很少发生竞争”，也就是说锁总是被第一个占用他的线程拥有，这个线程就是锁的偏向线程。<br>
+那么只需要在锁第一次被拥有的时候，记录下偏向线程ID。这样偏向线程就一直持有着锁(后续这个线程进入和退出这段加了同步锁的代码块时，不需要再次加锁和释放锁。而是直接比较对象头里面是否存储了指向当前线程的偏向锁)。<br>
+如果相等表示偏向锁是偏向于当前线程的，就不需要再尝试获得锁了，直到竞争发生才释放锁。以后每次同步，检查锁的偏向线程ID与当前线程ID是否一致，如果一致直接进入同步。无需每次加锁解锁都去CAS更新对象头。如果自始至终使用锁的线程只有一个，很明显偏向锁几乎没有额外开销，性能极高。<br>
+假如不一致意味着发生了竞争，锁已经不是总是偏向于同一个线程了，这时候可能需要升级变为轻量级锁，才能保证线程间公平竞争锁。偏向锁只有遇到其他线程尝试竞争偏向锁时，持有偏向锁的线程才会释放锁，线程是不会主动释放偏向锁的。</p>
+<p>技术实现：<br>
+一个synchronized方法被一个线程抢到了锁时，那这个方法获取的锁对象就会在其Mark Word中将偏向锁位进行修改，同时还<br>
+会有占用前54位来存储线程指针作为标识。若该线程再次访问同一个synchronized方法时，该线程只需去锁的对象头的Mark Word 中去判断一下是否有偏向锁指向本身的ID，无需再进入 Monitor 去竞争对象了。</p>
+<p><img src="../images/juc/image-20230515110201128.png" alt="image-20230515110201128"></p>
+<p>偏向锁，借助这种机制，就无须再去底层操作系统，用户态到内核态的转换。只需要简单判断一下MarkWord，如果MarkWord中存储的偏向线程ID为当前线程的ID，那么直接就放行，无须加锁和释放锁。只有当出现竞争的时候，那么偏向锁才可能会释放。转换为轻量级锁。否则线程是不会主动释放偏向锁的。</p>
+<p>这样的理论可以看出，如果我们竞争很小，几乎每次都是同一个线程持有资源，很明显偏向锁几乎没有额外开销，性能极高。</p>
+</blockquote>
+<p><strong>细化：具体对象来说明</strong></p>
+<blockquote>
+<p>偏向锁的操作不用直接捅到操作系统，不涉及用户到内核转换，不必要直接升级为最高级，我们以一个account对象的“对象头”为例，</p>
+<p><img src="../images/juc/image-20230515111052326.png" alt="image-20230515111052326"></p>
+<p>假如有一个线程执行到synchronized代码块（代码块中的锁对象为account对象）的时候，JVM使用CAS操作把线程指针ID记录到account对象的Mark Word当中，并修改标偏向标示，标示当前线程就获得该锁。锁对象变成偏向锁（通过CAS修改对象头里的锁标志位），字面意思是“偏向于第一个获得它的线程”的锁。执行完同步代码块后，线程并不会主动释放偏向锁。</p>
+<p><img src="../images/juc/image-20230515111057257.png" alt="image-20230515111057257"></p>
+<p>这时线程获得了锁，可以执行同步代码块。当该线程第二次到达同步代码块时会判断此时持有锁的线程是否还是自己（持有锁的线程ID也在对象头里），JVM通过account对象的Mark Word判断：当前线程ID还在，说明还持有着这个对象的锁，就可以继续进入临界区工作。由于之前没有释放锁，这里也就不需要重新加锁。 如果自始至终使用锁的线程只有一个，很明显偏向锁几乎没有额外开销，性能极高。</p>
+<p>结论：JVM不用和操作系统协商设置Mutex(争取内核)，它只需要记录下线程ID就标示自己获得了当前锁，不用操作系统接入。<br>
+上述就是偏向锁：在没有其他线程竞争的时候，一直偏向偏心当前线程，当前线程可以一直执行。</p>
+</blockquote>
+<p><strong>偏向锁JVM命令</strong></p>
+<blockquote>
+<p>java -XX:+PrintFlagsInitial |grep BiasedLock*</p>
+<p><img src="../images/juc/image-20230515111134756.png" alt="image-20230515111134756"></p>
+<ul>
+<li>实际上偏向锁在JDK1.6之后是默认开启的，但是启动时间有延迟，</li>
+<li>所以需要添加参数-XX:BiasedLockingStartupDelay=0，让其在程序启动时立刻启动。</li>
+<li></li>
+<li>开启偏向锁：</li>
+<li>-XX:+UseBiasedLocking -XX:BiasedLockingStartupDelay=0</li>
+<li></li>
+<li>关闭偏向锁：关闭之后程序默认会直接进入------------------------------------------&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;   轻量级锁状态。</li>
+<li>-XX:-UseBiasedLocking</li>
+</ul>
+</blockquote>
+<p><strong>通过JOL工具来查看</strong></p>
+<p><img src="../images/juc/image-20230515112339395.png" alt="image-20230515112339395"></p>
+<ul>
+<li>偏向锁标志位为 1  锁标志位为 01</li>
+</ul>
+<blockquote>
+<p>-XX:+UseBiasedLocking                       开启偏向锁(默认)<br>
+-XX:-UseBiasedLocking                       关闭偏向锁<br>
+-XX:BiasedLockingStartupDelay=0             关闭延迟(演示偏向锁时需要开启)</p>
+<p>参数说明：<br>
+偏向锁在JDK1.6以上默认开启，开启后程序启动几秒后才会被激活，可以使用JVM参数来关闭延迟 -XX:BiasedLockingStartupDelay=0</p>
+<p>如果确定锁通常处于竞争状态则可通过JVM参数 -XX:-UseBiasedLocking 关闭偏向锁，那么默认会进入轻量级锁</p>
+</blockquote>
+<p><strong>开始有第2个线程来抢夺了</strong></p>
+<blockquote>
+<p>当有另外线程逐步来竞争锁的时候，就不能再使用偏向锁了，要升级为轻量级锁</p>
+<p>竞争线程尝试CAS更新对象头失败，会等待到全局安全点（此时不会执行任何代码[不会执行任何字节码]）撤销偏向锁。</p>
+</blockquote>
+<p><strong>偏向锁的撤销</strong></p>
+<blockquote>
+<p>偏向锁的撤销<br>
+偏向锁使用一种等到竞争出现才释放锁的机制，只有当其他线程竞争锁时，持有偏向锁的原来线程才会被撤销。<br>
+撤销需要等待全局安全点(该时间点上没有字节码正在执行)，同时检查持有偏向锁的线程是否还在执行：</p>
+<p>①  第一个线程正在执行synchronized方法(处于同步块)，它还没有执行完，其它线程来抢夺，该偏向锁会被取消掉并出现锁升级。<br>
+此时轻量级锁由原持有偏向锁的线程持有，继续执行其同步代码，而正在竞争的线程会进入自旋等待获得该轻量级锁。<br>
+②  第一个线程执行完成synchronized方法(退出同步块)，则将对象头设置成无锁状态并撤销偏向锁，重新偏向</p>
+<p><img src="../images/juc/image-20230515112949813.png" alt="image-20230515112949813"></p>
+</blockquote>
+<p><strong>锁升级流程图</strong></p>
+<blockquote>
+<p><img src="https://img-blog.csdnimg.cn/img_convert/a92432dd0757ae3b7d180a5b802a0e71.png#pic_center" alt="image-20230210100055877"></p>
+<p>具体的锁升级流程如下：</p>
+<p>当首次执行同步代码的时候，目前锁对象的MarkWord中没有存储偏向线程ID，当线程A到来的时候，判断当前锁对象的MarkWord中是否存储了当前线程的ID，如果没有的话，将当前线程的ID进行CAS到锁对象的MarkWord中并标识偏向锁标识为1，锁标志位为01，当线程A再次到来的时候，只需要判断MarkWord中是否存储的是当前线程的ID，如果是当前线程ID，直接放行执行相应的方法。无需重新获得锁。因为之前并没有释放锁。</p>
+<p>此时如果线程B来了，CAS来替换MarkWord中记录的偏向线程ID，CAS失败，意味着发生了竞争，此时会进入偏向锁的撤销流程，线程B来了，但是此时线程A还在执行中，此时线程B会尝试CAS替换锁对象的MarkWord中的线程ID为线程B的ID。此时由于线程A还在执行中，因此会CAS失败。CAS失败后，就是发生了抢夺。要进入偏向锁撤销的流程。具体撤销流程是，当发生竞争时，需要撤销偏向锁。原持有偏向锁的线程到达安全点（在此刻不会执行任何代码，不会执行任何字节码）后，发生stop-the-world，首先会检查当前持有偏向锁的线程的工作状态。如果已经执行完成了，那么原持有偏向锁的线程释放偏向锁，线程恢复运行，如果还在执行过程中。那么会升级为轻量级锁，原持有偏向锁的线程获取到轻量级锁，（CAS替换锁对象的MarkWord指向线程栈中的锁记录Lock Record，锁标志位为00，CAS替换锁记录存储对象的MarkWord信息）。从安全点继续执行。其他线程通过自旋来获取轻量级锁。</p>
+<p>自旋次数达到一定程度还没有获取到轻量级锁，那么升级为重量级锁。修改锁标志位位10.与底层操作系统协商Mutex Lock锁，挂起当前线程，进入阻塞。重新进行抢夺锁。</p>
+</blockquote>
+<h4 id="轻量级锁"><a class="markdownIt-Anchor" href="#轻量级锁"></a> 轻量级锁</h4>
+<p>主要作用： 有线程来参与锁的竞争，但是获取锁的冲突时间极短。本质就是自旋锁。降低阻塞概率，充分利用CPU，但是也有可能造成CPU空转。此时就要相应的策略来控制自旋的次数。比如自适应自旋策略。</p>
+<p><img src="../images/juc/image-20230515144635824.png" alt="image-20230515144635824"></p>
+<p><strong>轻量级锁的获取</strong></p>
+<blockquote>
+<p>轻量级锁是为了在线程近乎交替执行同步块时提高性能。<br>
+主要目的： 在没有多线程竞争的前提下，通过CAS减少重量级锁使用操作系统互斥量产生的性能消耗，说白了先自旋再阻塞。<br>
+升级时机： 当关闭偏向锁功能或多线程竞争偏向锁会导致偏向锁升级为轻量级锁</p>
+<p>假如线程A已经拿到锁，这时线程B又来抢该对象的锁，由于该对象的锁已经被线程A拿到，当前该锁已是偏向锁了。<br>
+而线程B在争抢时发现对象头Mark Word中的线程ID不是线程B自己的线程ID(而是线程A)，那线程B就会进行CAS操作希望能获得锁。<br>
+此时线程B操作中有两种情况：<br>
+如果锁获取成功，直接替换Mark Word中的线程ID为B自己的ID(A → B)，重新偏向于其他线程(即将偏向锁交给其他线程，相当于当前线程&quot;被&quot;释放了锁)，该锁会保持偏向锁状态，A线程Over，B线程上位；</p>
+<p><img src="../images/juc/image-20230515144815704.png" alt="image-20230515144815704"></p>
+<p>如果锁获取失败，则偏向锁升级为轻量级锁，此时轻量级锁由原持有偏向锁的线程持有，继续执行其同步代码，而正在竞争的线程B会进入自旋等待获得该轻量级锁。</p>
+<p><img src="../images/juc/image-20230515144829436.png" alt="image-20230515144829436"></p>
+</blockquote>
+<p>如果关闭偏向锁，就可以直接进入轻量级锁</p>
+<p>-XX:-UseBiasedLocking</p>
+<p><strong>自旋达到一定次数和程度</strong></p>
+<p>java6之前:</p>
+<ul>
+<li>默认启用，默认情况下自旋的次数是 10次 -XX:PreBlockSpin=10来修改</li>
+<li>或者自旋线程数超过cpu核数一半</li>
+</ul>
+<p>Java6之后：</p>
+<p>自适应：自适应意味着自旋的次数不是固定不变的，根据同一个锁上一次自旋的时间。拥有锁线程的状态来决定。</p>
+<p>自适应比较智能，比如线程A此次自旋获取到了锁，那么就会增加线程A自旋的次数，如果线程A此次自旋失败了，那么就会减少线程A自旋的次数。如果线程A行，那么就多给他点机会。如果不行，那么就少给他点机会，不浪费资源，CPU空转。</p>
+<p><strong>轻量锁与偏向锁的区别和不同</strong></p>
+<p>争夺轻量级锁失败时，自旋尝试抢占锁，争夺偏向锁失败时，升级为轻量级锁。</p>
+<p>轻量级锁每次退出同步块都需要释放锁，而偏向锁是在竞争发生时才释放锁，不会主动释放锁。</p>
+<h4 id="重锁"><a class="markdownIt-Anchor" href="#重锁"></a> 重锁</h4>
+<p><strong>有大量的线程参与锁的竞争，冲突性很高</strong></p>
+<p><img src="../images/juc/image-20230515145309361.png" alt="image-20230515145309361"></p>
+<p>锁标志位为 10</p>
+<h4 id="小总结"><a class="markdownIt-Anchor" href="#小总结"></a> 小总结</h4>
+<p><strong>各种锁优缺点、synchronized锁升级和实现原理</strong></p>
+<p><img src="../images/juc/image-20230515145343734.png" alt="image-20230515145343734"></p>
+<blockquote>
+<p>synchronized锁升级过程总结：一句话，就是先自旋，不行再阻塞。<br>
+实际上是把之前的悲观锁(重量级锁)变成在一定条件下使用偏向锁以及使用轻量级(自旋锁CAS)的形式</p>
+<p>synchronized在修饰方法和代码块在字节码上实现方式有很大差异，但是内部实现还是基于对象头的MarkWord来实现的。<br>
+JDK1.6之前synchronized使用的是重量级锁，JDK1.6之后进行了优化，拥有了无锁-&gt;偏向锁-&gt;轻量级锁-&gt;重量级锁的升级过程，而不是无论什么情况都使用重量级锁。</p>
+<p>偏向锁:适用于单线程访问同步代码块的情况，在不存在锁竞争的时候进入同步方法/代码块则使用偏向锁。<br>
+轻量级锁：适用于竞争较不激烈的情况(这和乐观锁的使用范围类似)， 存在竞争时升级为轻量级锁，轻量级锁采用的是自旋锁，如果同步方法/代码块执行时间很短的话，采用轻量级锁虽然会占用cpu资源但是相对比使用重量级锁还是更高效。<br>
+重量级锁：适用于竞争激烈的情况，如果同步方法/代码块执行时间很长，那么使用轻量级锁自旋带来的性能消耗就比使用重量级锁更严重，这时候就需要升级为重量级锁。</p>
+</blockquote>
+<h3 id="jit编译器对锁的优化"><a class="markdownIt-Anchor" href="#jit编译器对锁的优化"></a> <strong>JIT编译器对锁的优化</strong></h3>
+<p>JIT : Just In Time Compiler，一般翻译为即时编译器</p>
+<h4 id="锁消除"><a class="markdownIt-Anchor" href="#锁消除"></a> 锁消除:</h4>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 锁消除</span></span><br><span class="line"><span class="comment"> * 从JIT角度看相当于无视它，synchronized (o)不存在了,这个锁对象并没有被共用扩散到其它线程使用，</span></span><br><span class="line"><span class="comment"> * 极端的说就是根本没有加这个锁对象的底层机器码，消除了锁的使用</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">LockClearUPDemo</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">static</span> <span class="type">Object</span> <span class="variable">objectLock</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Object</span>();<span class="comment">//正常的</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">m1</span><span class="params">()</span></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">//锁消除,JIT会无视它，synchronized(对象锁)不存在了。不正常的</span></span><br><span class="line">        <span class="type">Object</span> <span class="variable">o</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Object</span>();</span><br><span class="line"></span><br><span class="line">        <span class="keyword">synchronized</span> (o)</span><br><span class="line">        &#123;</span><br><span class="line">            System.out.println(<span class="string">&quot;-----hello LockClearUPDemo&quot;</span>+<span class="string">&quot;\t&quot;</span>+o.hashCode()+<span class="string">&quot;\t&quot;</span>+objectLock.hashCode());</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="type">LockClearUPDemo</span> <span class="variable">demo</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">LockClearUPDemo</span>();</span><br><span class="line"></span><br><span class="line">        <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> <span class="operator">=</span> <span class="number">1</span>; i &lt;=<span class="number">10</span>; i++) &#123;</span><br><span class="line">            <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">                demo.m1();</span><br><span class="line">            &#125;,String.valueOf(i)).start();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>锁消除。如上面的案例所示：我们的synchronized(o)，每次锁的o都是一个新创建的对象，此时就相当于每次锁的对象都是新创建的，并不唯一，不是多个线程共同操作的对象。此时JIT就认为你写了个很蠢的代码，直接就把加锁操作忽视了。就相当于是只有这 System.out.println(“-----hello LockClearUPDemo”+“\t”+o.hashCode()+“\t”+objectLock.hashCode()); 一句话。没有加锁和释放锁的操作了。</p>
+<h4 id="锁粗化"><a class="markdownIt-Anchor" href="#锁粗化"></a> 锁粗化</h4>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> * 锁粗化</span></span><br><span class="line"><span class="comment"> * 假如方法中首尾相接，前后相邻的都是同一个锁对象，那JIT编译器就会把这几个synchronized块合并成一个大块，</span></span><br><span class="line"><span class="comment"> * 加粗加大范围，一次申请锁使用即可，避免次次的申请和释放锁，提升了性能</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">LockBigDemo</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="keyword">static</span> <span class="type">Object</span> <span class="variable">objectLock</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Object</span>();</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span></span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">            <span class="keyword">synchronized</span> (objectLock) &#123;</span><br><span class="line">                System.out.println(<span class="string">&quot;11111&quot;</span>);</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">synchronized</span> (objectLock) &#123;</span><br><span class="line">                System.out.println(<span class="string">&quot;22222&quot;</span>);</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">synchronized</span> (objectLock) &#123;</span><br><span class="line">                System.out.println(<span class="string">&quot;33333&quot;</span>);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;,<span class="string">&quot;a&quot;</span>).start();</span><br><span class="line"></span><br><span class="line">        <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">            <span class="keyword">synchronized</span> (objectLock) &#123;</span><br><span class="line">                System.out.println(<span class="string">&quot;44444&quot;</span>);</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">synchronized</span> (objectLock) &#123;</span><br><span class="line">                System.out.println(<span class="string">&quot;55555&quot;</span>);</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">synchronized</span> (objectLock) &#123;</span><br><span class="line">                System.out.println(<span class="string">&quot;66666&quot;</span>);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;,<span class="string">&quot;b&quot;</span>).start();</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>锁粗化: 如上图案例所示：我们对于同一个锁，分别执行了一行代码，一行代码一个锁。这就很蒙圈。都知道我们的获取锁和释放锁是会消耗一定资源的。因此JIT编译器，就会直接，整一个大的锁块。把所有挨着的代码都放在这一个代码块里进行执行。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"> <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">            <span class="keyword">synchronized</span> (objectLock) &#123;</span><br><span class="line">                System.out.println(<span class="string">&quot;11111&quot;</span>);</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">synchronized</span> (objectLock) &#123;</span><br><span class="line">                System.out.println(<span class="string">&quot;22222&quot;</span>);</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">synchronized</span> (objectLock) &#123;</span><br><span class="line">                System.out.println(<span class="string">&quot;33333&quot;</span>);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;,<span class="string">&quot;a&quot;</span>).start();</span><br><span class="line"></span><br><span class="line">======================= 锁粗化后：=========================</span><br><span class="line">  </span><br><span class="line">  <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">    		<span class="keyword">synchronized</span>(objectLock)&#123;</span><br><span class="line">          		System.out.println(<span class="string">&quot;11111&quot;</span>);</span><br><span class="line">          		System.out.println(<span class="string">&quot;22222&quot;</span>);</span><br><span class="line">          		System.out.println(<span class="string">&quot;33333&quot;</span>);</span><br><span class="line">        	&#125;</span><br><span class="line">  &#125;)</span><br></pre></td></tr></table></figure>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta">文章作者: </span><span class="post-copyright-info"><a href="http://example.com">Hackery</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta">文章链接: </span><span class="post-copyright-info"><a href="http://example.com/4e9d06d7.html">http://example.com/4e9d06d7.html</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta">版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来自 <a href="http://example.com" target="_blank">Hackery的笔记屋</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/synchronized/">synchronized</a><a class="post-meta__tags" href="/tags/%E9%94%81/">锁</a></div><div class="post_share"><div class="social-share" data-image="https://i.loli.net/2020/05/01/gkihqEjXxJ5UZ1C.jpg" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><div class="next-post pull-full"><a href="/bfbf2edb.html" title="“CAS理论结合实践详解”"><img class="cover" src="https://i.loli.net/2020/05/01/gkihqEjXxJ5UZ1C.jpg" onerror="onerror=null;src='/img/404.jpg'" alt="cover of next post"><div class="pagination-info"><div class="label">下一篇</div><div class="next_info">“CAS理论结合实践详解”</div></div></a></div></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info"><div class="is-center"><div class="avatar-img"><img src="/img/profile.webp" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info__name">Hackery</div><div class="author-info__description"></div></div><div class="card-info-data site-data is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">3</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">6</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">1</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/xxxxxx"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons is-center"><a class="social-icon" href="https://github.com/Pyshijie" target="_blank" title="Github"><i class="fab fa-github" style="color: #24292e;"></i></a><a class="social-icon" href="mailto:yitshijie001@163.com" target="_blank" title="Email"><i class="fas fa-envelope" style="color: #4a7dbe;"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">This is my Blog</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#synchronized%E4%B8%8E%E9%94%81%E5%8D%87%E7%BA%A7"><span class="toc-number">1.</span> <span class="toc-text"> Synchronized与锁升级</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9C%AC%E7%AB%A0%E8%B7%AF%E7%BA%BF%E6%80%BB%E7%BA%B2"><span class="toc-number">2.</span> <span class="toc-text"> 本章路线总纲</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#synchronized%E7%9A%84%E6%80%A7%E8%83%BD%E5%8F%98%E5%8C%96"><span class="toc-number">3.</span> <span class="toc-text"> Synchronized的性能变化</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E6%AF%8F%E4%B8%80%E4%B8%AA%E5%AF%B9%E8%B1%A1%E9%83%BD%E5%8F%AF%E4%BB%A5%E6%88%90%E4%B8%BA%E4%B8%80%E4%B8%AA%E9%94%81"><span class="toc-number">4.</span> <span class="toc-text"> 为什么每一个对象都可以成为一个锁？？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#synchronized%E9%94%81%E7%A7%8D%E7%B1%BB%E5%8F%8A%E5%8D%87%E7%BA%A7%E6%AD%A5%E9%AA%A4"><span class="toc-number">5.</span> <span class="toc-text"> synchronized锁种类及升级步骤</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%97%A0%E9%94%81"><span class="toc-number">5.1.</span> <span class="toc-text"> 无锁</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%81%8F%E5%90%91%E9%94%81"><span class="toc-number">5.2.</span> <span class="toc-text"> 偏向锁</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E8%BD%BB%E9%87%8F%E7%BA%A7%E9%94%81"><span class="toc-number">5.3.</span> <span class="toc-text"> 轻量级锁</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E9%87%8D%E9%94%81"><span class="toc-number">5.4.</span> <span class="toc-text"> 重锁</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%B0%8F%E6%80%BB%E7%BB%93"><span class="toc-number">5.5.</span> <span class="toc-text"> 小总结</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#jit%E7%BC%96%E8%AF%91%E5%99%A8%E5%AF%B9%E9%94%81%E7%9A%84%E4%BC%98%E5%8C%96"><span class="toc-number">6.</span> <span class="toc-text"> JIT编译器对锁的优化</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E9%94%81%E6%B6%88%E9%99%A4"><span class="toc-number">6.1.</span> <span class="toc-text"> 锁消除:</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E9%94%81%E7%B2%97%E5%8C%96"><span class="toc-number">6.2.</span> <span class="toc-text"> 锁粗化</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/4e9d06d7.html" title="synchronized与锁升级"><img src="https://i.loli.net/2020/05/01/gkihqEjXxJ5UZ1C.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="synchronized与锁升级"/></a><div class="content"><a class="title" href="/4e9d06d7.html" title="synchronized与锁升级">synchronized与锁升级</a><time datetime="2023-09-12T02:20:30.000Z" title="发表于 2023-09-12 10:20:30">2023-09-12</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/bfbf2edb.html" title="“CAS理论结合实践详解”"><img src="https://i.loli.net/2020/05/01/gkihqEjXxJ5UZ1C.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="“CAS理论结合实践详解”"/></a><div class="content"><a class="title" href="/bfbf2edb.html" title="“CAS理论结合实践详解”">“CAS理论结合实践详解”</a><time datetime="2023-09-12T00:05:10.000Z" title="发表于 2023-09-12 08:05:10">2023-09-12</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/83284e5d.html" title="JUC之AQS详解"><img src="https://i.loli.net/2020/05/01/gkihqEjXxJ5UZ1C.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="JUC之AQS详解"/></a><div class="content"><a class="title" href="/83284e5d.html" title="JUC之AQS详解">JUC之AQS详解</a><time datetime="2023-09-11T07:04:38.000Z" title="发表于 2023-09-11 15:04:38">2023-09-11</time></div></div></div></div></div></div></main><footer id="footer" style="background-image: url('https://i.loli.net/2020/05/01/gkihqEjXxJ5UZ1C.jpg')"><div id="footer-wrap"><div class="copyright">&copy;2023 By Hackery</div><div class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly</a></div><div class="footer_custom_text">Hi,  welcome  to  my blog</a>!</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"></div><div id="rightside-config-show"><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox/fancybox.umd.min.js"></script><script src="https://cdn.jsdelivr.net/npm/node-snackbar/dist/snackbar.min.js"></script><script>function panguFn () {
+  if (typeof pangu === 'object') pangu.autoSpacingPage()
+  else {
+    getScript('https://cdn.jsdelivr.net/npm/pangu/dist/browser/pangu.min.js')
+      .then(() => {
+        pangu.autoSpacingPage()
+      })
+  }
+}
+
+function panguInit () {
+  if (false){
+    GLOBAL_CONFIG_SITE.isPost && panguFn()
+  } else {
+    panguFn()
+  }
+}
+
+document.addEventListener('DOMContentLoaded', panguInit)</script><div class="js-pjax"></div><script defer="defer" id="ribbon" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/dist/canvas-ribbon.min.js" size="150" alpha="0.6" zIndex="-1" mobile="false" data-click="false"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
